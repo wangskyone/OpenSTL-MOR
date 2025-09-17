@@ -1,0 +1,18 @@
+method = 'SwinLSTM_B'
+# model
+# depths_downsample = '2,6'
+# depths_upsample = '6,2'
+# num_heads = '4,8'
+# patch_size = 2
+# window_size = 4
+# embed_dim = 128
+patch_size = 2 
+embed_dim =128
+depths =12
+num_heads = 8
+window_size = 4
+
+# training
+lr = 1e-4
+batch_size = 16
+sched = 'onecycle'
