@@ -115,7 +115,7 @@ class STB(SwinTransformerBlock):
 
         # FFN
         x = shortcut + self.drop_path1(x)
-        x = x + self.drop_path1(self.mlp(self.norm2(x)))
+        x = x + self.drop_path2(self.mlp(self.norm2(x)))
 
         return x
         
