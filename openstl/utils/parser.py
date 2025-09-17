@@ -28,7 +28,7 @@ def create_parser():
     parser.add_argument('--batch_size', '-b', default=16, type=int, help='Training batch size')
     parser.add_argument('--val_batch_size', '-vb', default=16, type=int, help='Validation batch size')
     parser.add_argument('--num_workers', default=4, type=int)
-    parser.add_argument('--data_root', default='/nas_data/LSH/OpenSTL-MOR/data/')
+    parser.add_argument('--data_root', default='/nas_data/LSH/data/')
     parser.add_argument('--dataname', '-d', default='mmnist', type=str,
                         choices=['bair', 'mfmnist', 'mmnist', 'mmnist_cifar', 'noisymmnist', 'taxibj', 'human',
                                 'kth', 'kth20', 'kth40', 'kitticaltech', 'kinetics', 'kinetics400', 'kinetics600',
