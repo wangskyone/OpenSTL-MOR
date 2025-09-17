@@ -1,5 +1,6 @@
 # Copyright (c) CAIRI AI Lab. All rights reserved
-
+import sys
+sys.path.append('/nas_data/WTY/project/OpenSTL-MOR/')
 import os.path as osp
 import warnings
 warnings.filterwarnings('ignore')

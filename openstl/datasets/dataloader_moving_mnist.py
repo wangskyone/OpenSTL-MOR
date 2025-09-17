@@ -3,7 +3,8 @@ import gzip
 import numpy as np
 import os
 import random
-
+import sys
+sys.path.append('/nas_data/WTY/project/OpenSTL-MOR/')
 import torch
 import torch.nn.functional as F
 import torchvision
@@ -275,11 +276,11 @@ if __name__ == '__main__':
     dataloader_train, _, dataloader_test = \
         load_data(batch_size=16,
                   val_batch_size=4,
-                  data_root='../../data/',
+                  data_root='/nas_data/LSH/OpenSTL-MOR/data/',
                   num_workers=4,
                   data_name='mnist',
                   pre_seq_length=10, aft_seq_length=10,
-                  distributed=True, use_prefetcher=False)
+                  distributed=False, use_prefetcher=False)
 
     print(len(dataloader_train), len(dataloader_test))
     for item in dataloader_train:

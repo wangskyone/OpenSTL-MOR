@@ -90,32 +90,32 @@ class STB(SwinTransformerBlock):
         x = x.view(B, H, W, C)
 
         # cyclic shift
-        if self.shift_size > 0:
-            shifted_x = torch.roll(x, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
+        if self.shift_size[0] > 0:
+            shifted_x = torch.roll(x, shifts=(-self.shift_size[0], -self.shift_size[0]), dims=(1, 2))
         else:
             shifted_x = x
 
         # partition windows
-        x_windows = window_partition(shifted_x, self.window_size)  # num_win*B, window_size, window_size, C
-        x_windows = x_windows.view(-1, self.window_size * self.window_size, C)  # num_win*B, window_size*window_size, C
+        x_windows = window_partition(shifted_x, self.window_size[0])  # num_win*B, window_size, window_size, C
+        x_windows = x_windows.view(-1, self.window_size[0] * self.window_size[0], C)  # num_win*B, window_size*window_size, C
 
         # W-MSA/SW-MSA
         attn_windows = self.attn(x_windows, mask=self.attn_mask)  # num_win*B, window_size*window_size, C
 
         # merge windows
-        attn_windows = attn_windows.view(-1, self.window_size, self.window_size, C)
-        shifted_x = window_reverse(attn_windows, self.window_size, H, W)  # B H' W' C
+        attn_windows = attn_windows.view(-1, self.window_size[0], self.window_size[0], C)
+        shifted_x = window_reverse(attn_windows, self.window_size[0], H, W)  # B H' W' C
 
         # reverse cyclic shift
-        if self.shift_size > 0:
-            x = torch.roll(shifted_x, shifts=(self.shift_size, self.shift_size), dims=(1, 2))
+        if self.shift_size[0] > 0:
+            x = torch.roll(shifted_x, shifts=(self.shift_size[0], self.shift_size[0]), dims=(1, 2))
         else:
             x = shifted_x
         x = x.view(B, H * W, C)
 
         # FFN
-        x = shortcut + self.drop_path(x)
-        x = x + self.drop_path(self.mlp(self.norm2(x)))
+        x = shortcut + self.drop_path1(x)
+        x = x + self.drop_path1(self.mlp(self.norm2(x)))
 
         return x
         
