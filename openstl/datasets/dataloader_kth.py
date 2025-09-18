@@ -232,7 +232,7 @@ class DataProcess(object):
         return InputHandle(test_data, test_indices, self.input_param)
 
 
-def load_data(batch_size, val_batch_size, data_root, num_workers=4,
+def load_data(batch_size, val_batch_size, data_root, num_workers=16,
               pre_seq_length=10, aft_seq_length=20, in_shape=[10, 1, 128, 128],
               distributed=False, use_augment=False, use_prefetcher=False, 
               drop_last=False, debug=False):
@@ -293,3 +293,5 @@ if __name__ == '__main__':
     for item in dataloader_test:
         print(item[0].shape, item[1].shape)
         break
+
+
