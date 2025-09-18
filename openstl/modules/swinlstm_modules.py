@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from timm.models.swin_transformer import SwinTransformerBlock,  window_reverse, PatchEmbed, PatchMerging, window_partition
+from timm.models.vision_transformer import VisionTransformer
 from timm.layers import to_2tuple
 
 class SwinLSTMCell(nn.Module):
@@ -118,6 +119,13 @@ class STB(SwinTransformerBlock):
         x = x + self.drop_path2(self.mlp(self.norm2(x)))
 
         return x
+
+
+
+
+
+
+
         
 class PatchInflated(nn.Module):
     r""" Tensor to Patch Inflating
@@ -136,9 +144,10 @@ class PatchInflated(nn.Module):
         output_padding = to_2tuple(output_padding)
         self.input_resolution = input_resolution
 
-        self.Conv = nn.ConvTranspose2d(in_channels=embed_dim, out_channels=in_chans, kernel_size=(3, 3),
+        self.Conv = nn.ConvTranspose2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=(3, 3),
                                        stride=stride, padding=padding, output_padding=output_padding)
-
+        self.Conv2 = nn.ConvTranspose2d(in_channels=embed_dim, out_channels=in_chans, kernel_size=(3, 3),
+                                       stride=stride, padding=padding, output_padding=output_padding)
     def forward(self, x):
         H, W = self.input_resolution
         B, L, C = x.shape
@@ -148,6 +157,7 @@ class PatchInflated(nn.Module):
         x = x.view(B, H, W, C)
         x = x.permute(0, 3, 1, 2)
         x = self.Conv(x)
+        x = self.Conv2(x)
 
         return x
        
@@ -308,10 +318,11 @@ class STconvert(nn.Module):
                                   drop_path=drop_path_rate, norm_layer=norm_layer,
                                   flag=flag)
     def forward(self, x, h=None):
+
         x = self.patch_embed(x)
 
         x, hidden_state = self.layer(x, h)
 
         x = torch.sigmoid(self.patch_inflated(x))
-        
+     
         return x, hidden_state

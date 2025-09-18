@@ -9,6 +9,7 @@ def load_data(dataname, batch_size, val_batch_size, num_workers, data_root, dist
         use_augment=kwargs.get('use_augment', False),
         use_prefetcher=kwargs.get('use_prefetcher', False),
         drop_last=kwargs.get('drop_last', False),
+        debug=kwargs.get('debug', False),
     )
 
     if dataname == 'bair':

@@ -3,7 +3,8 @@ import random
 import cv2
 import numpy as np
 from PIL import Image
-
+import sys
+sys.path.append('/nas_data/WTY/project/OpenSTL-MOR/')
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset
@@ -123,7 +124,7 @@ class DataProcess(object):
         self.category_2 = ['jogging', 'running']
         self.category = self.category_1 + self.category_2
         self.image_width = input_param['image_width']
-
+        self.debug = input_param['debug']
         self.train_person = [
             '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12',
             '13', '14', '15', '16'
@@ -132,6 +133,7 @@ class DataProcess(object):
 
         self.input_param = input_param
         self.seq_len = input_param['seq_length']
+
 
     def load_data(self, path, mode='train'):
         """Loads the dataset.
@@ -143,8 +145,12 @@ class DataProcess(object):
         """
         assert mode in ['train', 'test']
         if mode == 'train':
+            if self.debug:
+                self.train_person = ['01']
             person_id = self.train_person
         else:
+            if self.debug:
+                self.test_person = ['17']
             person_id = self.test_person
         print('begin load data' + str(path))
 
@@ -228,7 +234,8 @@ class DataProcess(object):
 
 def load_data(batch_size, val_batch_size, data_root, num_workers=4,
               pre_seq_length=10, aft_seq_length=20, in_shape=[10, 1, 128, 128],
-              distributed=False, use_augment=False, use_prefetcher=False, drop_last=False):
+              distributed=False, use_augment=False, use_prefetcher=False, 
+              drop_last=False, debug=False):
 
     img_width = in_shape[-1] if in_shape is not None else 128
     # pre_seq_length, aft_seq_length = 10, 10
@@ -238,7 +245,8 @@ def load_data(batch_size, val_batch_size, data_root, num_workers=4,
         'minibatch_size': batch_size,
         'seq_length': (pre_seq_length + aft_seq_length),
         'input_data_type': 'float32',
-        'name': 'kth'
+        'name': 'kth',
+        'debug': debug
     }
     input_handle = DataProcess(input_param)
     train_input_handle = input_handle.get_train_input_handle()
@@ -274,9 +282,9 @@ if __name__ == '__main__':
     dataloader_train, _, dataloader_test = \
         load_data(batch_size=16,
                 val_batch_size=4,
-                data_root='../../data/',
+                data_root='/nas_data/LSH/data/',
                 num_workers=4,
-                pre_seq_length=10, aft_seq_length=20)
+                pre_seq_length=10, aft_seq_length=20, debug=True,)
 
     print(len(dataloader_train), len(dataloader_test))
     for item in dataloader_train:
