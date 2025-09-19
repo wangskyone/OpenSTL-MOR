@@ -12,7 +12,7 @@ depths =6
 num_heads = 8
 
 # training
-lr = 1e-4
+lr = 5e-4
 batch_size = 16
-sched = 'onecycle'
+sched = 'cosine'
 debug = False
