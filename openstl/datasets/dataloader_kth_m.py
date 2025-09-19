@@ -5,7 +5,7 @@ import random
 import cv2
 import numpy as np
 import sys
-sys.path.append('/nas_data/WTY/project/OpenSTL-MOR/') # 根据你的环境取消注释
+sys.path.append('/nas_data/LSH/OpenSTL-MOR') # 根据你的环境取消注释
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset

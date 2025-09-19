@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from PIL import Image
 import sys
-sys.path.append('/nas_data/WTY/project/OpenSTL-MOR/')
+sys.path.append('/nas_data/LSH/OpenSTL-MOR')
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset

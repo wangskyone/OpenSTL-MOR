@@ -2,7 +2,8 @@
 
 from .dataloader_human import HumanDataset
 from .dataloader_kitticaltech import KittiCaltechDataset
-from .dataloader_kth import KTHDataset
+# from .dataloader_kth import KTHDataset
+from .dataloader_kth_m import KTHDataset
 from .dataloader_moving_mnist import MovingMNIST
 from .dataloader_taxibj import TaxibjDataset
 from .dataloader_weather import WeatherBenchDataset
