@@ -3,7 +3,7 @@ from torch import nn
 
 from openstl.modules import (ConvSC, ConvNeXtSubBlock, ConvMixerSubBlock, GASubBlock, gInception_ST,
                              HorNetSubBlock, MLPMixerSubBlock, MogaSubBlock, PoolFormerSubBlock,
-                             SwinSubBlock, UniformerSubBlock, VANSubBlock, ViTSubBlock, TAUSubBlock)
+                             SwinSubBlock, UniformerSubBlock, VANSubBlock, ViTSubBlock, TAUSubBlock,MoDViTSubBlock)
 
 
 class SimVP_Model(nn.Module):
@@ -191,6 +191,9 @@ class MetaBlock(nn.Module):
                 in_channels, mlp_ratio=mlp_ratio, drop=drop, drop_path=drop_path, act_layer=nn.GELU)
         elif model_type == 'vit':
             self.block = ViTSubBlock(
+                in_channels, mlp_ratio=mlp_ratio, drop=drop, drop_path=drop_path)
+        elif model_type == 'modvit':
+            self.block = MoDViTSubBlock(
                 in_channels, mlp_ratio=mlp_ratio, drop=drop, drop_path=drop_path)
         elif model_type == 'tau':
             self.block = TAUSubBlock(

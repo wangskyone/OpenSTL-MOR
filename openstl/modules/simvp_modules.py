@@ -1,6 +1,8 @@
 import math
 import torch
+from torch import Tensor
 import torch.nn as nn
+import torch.nn.functional as F
 
 from timm.layers import DropPath, trunc_normal_
 from timm.models.convnext import ConvNeXtBlock
@@ -513,6 +515,174 @@ class ViTSubBlock(ViTBlock):
         x = x + self.drop_path(self.attn(self.norm1(x)))
         x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x.reshape(B, H, W, C).permute(0, 3, 1, 2)
+
+
+class MoDViTSubBlock(ViTBlock):
+    """A block of Vision Transformer."""
+
+    def __init__(self, dim, mlp_ratio=4., drop=0., drop_path=0.1):
+        super().__init__(dim=dim, num_heads=8, mlp_ratio=mlp_ratio, qkv_bias=True,
+                         attn_drop=drop, proj_drop=0, drop_path=drop_path, act_layer=nn.GELU, norm_layer=nn.LayerNorm)
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, (nn.LayerNorm, nn.GroupNorm, nn.BatchNorm2d)):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+
+    @torch.jit.ignore
+    def no_weight_decay(self):
+        return {}
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        x = x.flatten(2).transpose(1, 2)
+        x = x + self.drop_path(self.attn(self.norm1(x)))
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
+        return x.reshape(B, H, W, C).permute(0, 3, 1, 2)
+    
+
+class MoDViTSubBlock(nn.Module):
+    def __init__(
+        self,
+        dim: int = None,                   # token 的 embedding 维度（d）
+        capacity_factor: int = 0.5,       # 选取 top-k 的比例因子（后面会用 s * capacity_factor 计算 top_k）
+        aux_loss_on: bool = False,         # 是否启用辅助损失
+        mlp_ratio=4., drop_path=0.1,
+        num_heads=8, qkv_bias=True, attn_drop=0., 
+        proj_drop=0, act_layer=nn.GELU, norm_layer=nn.LayerNorm,
+        **kwargs,
+    ):
+        super().__init__()                 # 调用父类构造
+        self.dim = dim                     # 保存 embedding 维度
+        self.capacity_factor = capacity_factor  # 保存 capacity 因子（用于计算 top_k）
+        self.transformer_block = ViTBlock(dim=dim,num_heads=num_heads,mlp_ratio=mlp_ratio,
+                                          qkv_bias=qkv_bias,drop_path=drop_path,attn_drop=attn_drop,
+                                          proj_drop=proj_drop,act_layer=act_layer,norm_layer=norm_layer)  
+        self.aux_loss_on = aux_loss_on     # 保存 aux loss flag
+
+        self.router = nn.Linear(dim, 1, bias=False)   # 路由器：线性层把每个 token 的 d 维向量映射为一个标量 logit（用于 top-k 排序）
+
+        self.aux_router = nn.Sequential(               # 备用的辅助路由器（目前类里并未使用到），是个小 MLP
+            nn.Linear(dim, dim // 2),
+            nn.SiLU(),
+            nn.Linear(dim // 2, 1),
+        )
+
+        # Transformer Block
+        # self.transformer = LongGeminiTransformerBlock(
+        #     dim,
+        #     transformer_depth,
+        # )
+        # （上面注释掉的是另外一种 transformer 初始化方式，这里作者选择将 transformer_block 作为外部传入）
+
+    def forward(
+        self,
+        x: Tensor = None,                 # 输入 x，形状通常为 [B, S, D]（batch, seq_len, dim）
+        **kwargs,
+    ) -> Tensor:
+        B, C, H, W = x.shape
+        x = x.flatten(2).transpose(1, 2)
+        b, s, d = x.shape             # 获取输入形状：b=batch，s=序列长度，d=embedding 维度
+        device = x.device             # 设备（cuda/cpu），这里取得但实际代码中并未再次使用 device 变量
+
+        # Top k
+        top_k = int(s * self.capacity_factor)   # 计算要选取的 token 数量 top_k（例如 capacity_factor=0.25 则选 25% 的 token）
+                                                # 注意：如果 capacity_factor 太小可能导致 top_k==0，要确保 top_k >= 1
+
+        # Scalar weights for each token
+        router_logits = self.router(x)          # 对每个 token 计算路由 logit，形状 [B, S, 1]
+                                                # 每个 token 有一个标量表示“重要性”或“被选概率（未归一化）”
+
+        # Equation 1
+        token_weights, token_index = torch.topk(
+            router_logits, top_k, dim=1, sorted=False
+        )
+        # torch.topk 返回两个张量：
+        # - token_weights: top_k 的 logit 值，形状 [B, top_k, 1]
+        # - token_index: 对应的索引（在原序列维度上的位置），形状 [B, top_k, 1]（索引类型为 long）
+
+        # Selected
+        selected_tokens, index = torch.sort(token_index, dim=1)
+        # 对 topk 索引按序列位置排序：
+        # - selected_tokens: 将 token_index 中的索引值按升序排序后得到的值，形状 [B, top_k, 1]；这些是要被选中的原序列位置（0..s-1）
+        # - index: 表示排序后每个元素在原 token_index 中的位置（可用于重排对应的权重），形状 [B, top_k, 1]
+        # 目的：把被选位置按时间顺序（或索引顺序）排列，便于后续 transformer 按自然顺序处理
+
+        # Select idx
+        indices_expanded = selected_tokens.expand(-1, -1, self.dim)
+        # selected_tokens 形状 [B, top_k, 1] -> expand 成 [B, top_k, D]
+        # 这是为了配合 torch.gather 的索引格式（index 必须和要索引的张量在非 index 维度形状一致）
+
+        # Filtered topk tokens with capacity c
+        filtered_x = torch.gather(
+            input=x, dim=1, index=indices_expanded
+        )
+        # 从原始 x([B,S,D]) 中按 indices_expanded 在 dim=1（序列维）上采样出被选的 top_k token
+        # 结果 filtered_x 形状为 [B, top_k, D]
+        # 注意：torch.gather 要求 index 为 long 类型且 index.shape == src.shape（除了被索引的 dim 的大小）
+        # print(filtered_x.shape)  # DEBUG 打印：通常是 [B, top_k, D]
+
+        # I think filtered_x goes through the transformer block?
+        x_out = self.transformer_block(filtered_x)
+        # 把被选出来的 token（按序排列）喂给 transformer_block（外部传入的模块）进行处理
+        # 假设 transformer_block 对输入 [B, top_k, D] 输出 [B, top_k, D']（通常 D'==D）
+
+        # Softmax router weights
+        token_weights = F.softmax(token_weights, dim=1)
+        # 对 top_k 的 router logits 做 softmax 归一化（在 top_k 维度上）
+        # token_weights 形状为 [B, top_k, 1]，softmax 之后表示每个被选 token 的归一化权重
+
+        # Selecting router weight by idx
+        r_weights = torch.gather(token_weights, dim=1, index=index)
+        # 这里把 token_weights 根据之前 torch.sort 得到的 index 重排：
+        # 目的是让权重的顺序对齐到 selected_tokens 的顺序（即与 filtered_x 的顺序一致）
+        # r_weights 形状为 [B, top_k, 1]
+
+        # Multiply by router weights
+        xw_out = r_weights * x_out
+        # 用权重对 transformer 输出按 token 加权（broadcast），结果形状 [B, top_k, D]
+
+        # Out
+        out = torch.scatter_add(
+            input=x, dim=1, index=indices_expanded, src=xw_out
+        )
+        # 将加权后的 selected token 输出放回到原始序列对应位置：
+        # - scatter_add 会把 src 的每个元素累加到 input 的指定 index 位置上
+        # - indices_expanded 形状 [B, top_k, D]，src xw_out 形状 [B, top_k, D]
+        # - 输出 out 的形状和 input x 相同，即 [B, S, D]
+        # 注：如果 index 中存在重复位置（通常不会），scatter_add 会将多个 src 值累加到同一位置
+
+        # Aux loss
+        if self.aux_loss_on is not False:
+            aux_loss = self.aux_loss(
+                out, router_logits, selected_tokens
+            )
+            return out, aux_loss
+        return out.reshape(B, H, W, C).permute(0, 3, 1, 2)
+        
+    def aux_loss(
+        self,
+        x: Tensor,
+        router_logits: Tensor,
+        selected_tokens: Tensor,
+    ):
+        b, s, d = x.shape
+
+        router_targets = torch.zeros_like(router_logits).view(-1)
+
+        router_targets[selected_tokens.view(-1)] = 1.0
+        aux_router_logits = self.aux_router(
+            x.detach().view(b * s, -1)
+        )
+        return F.binary_cross_entropy_with_logits(
+            aux_router_logits.view(-1), router_targets
+        )
     
 
 class TemporalAttention(nn.Module):

@@ -7,12 +7,12 @@ method = 'morlstm_b'
 # window_size = 4
 # embed_dim = 128
 patch_size = 4 
-embed_dim =128
+embed_dim =192
 depths =6
 num_heads = 8
 
 # training
-lr = 5e-4
+lr = 1e-5
 batch_size = 16
 sched = 'cosine'
 debug = False

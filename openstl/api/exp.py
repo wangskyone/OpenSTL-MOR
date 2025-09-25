@@ -43,6 +43,8 @@ class BaseExperiment(object):
                        max_epochs=args.epoch,  # Maximum number of epochs to train for
                        strategy=strategy,   # 'ddp', 'deepspeed_stage_2', 'ddp_find_unused_parameters_false'
                        accelerator='gpu',  # Use distributed data parallel
+                       check_val_every_n_epoch=5,
+                       num_sanity_val_steps=0,
                        callbacks=callbacks
                     )
 
