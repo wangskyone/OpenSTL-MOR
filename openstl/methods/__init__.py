@@ -14,6 +14,10 @@ from .mmvp import MMVP
 from .swinlstm import SwinLSTM_D, SwinLSTM_B
 from .wast import WaST
 from .morlstm import MorLSTM_B
+from .patch import Patch
+from .VMRNN import VMRNN_D, VMRNN_B
+from .PredFormer import PredFormer_method
+from .ModPredFormer import PredFormer_method as Mod_PredFormer_method
 
 method_maps = {
     'convlstm': ConvLSTM,
@@ -31,11 +35,17 @@ method_maps = {
     'swinlstm_b': SwinLSTM_B,
     'swinlstm': SwinLSTM_B,
     'wast': WaST,
-    'morlstm_b':MorLSTM_B
+    'morlstm_b':MorLSTM_B,
+    'patch':Patch,
+    'vmrnn_d': VMRNN_D,
+    'vmrnn_b': VMRNN_B,
+    'predformer': PredFormer_method,
+    'modpredformer': Mod_PredFormer_method
 }
 
 __all__ = [
     'method_maps', 'ConvLSTM', 'E3DLSTM', 'MAU', 'MIM',
     'PredRNN', 'PredRNNpp', 'PredRNNv2', 'PhyDNet', 'SimVP', 'TAU',
-    "MMVP", 'SwinLSTM_D', 'SwinLSTM_B', 'WaST', 'MorLSTM_B'
+    "MMVP", 'SwinLSTM_D', 'SwinLSTM_B', 'WaST', 'MorLSTM_B','Patch',
+    'VMRNN_D', 'VMRNN_B','PredFormer_method','Mod_PredFormer_method'
 ]

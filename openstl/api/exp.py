@@ -108,7 +108,7 @@ class BaseExperiment(object):
             assign_gpu = 'cuda:' + (str(args.gpus[0]) if len(args.gpus) == 1 else '0')
             device = torch.device(assign_gpu)
         T, C, H, W = args.in_shape
-        if args.method in ['simvp', 'tau', 'mmvp', 'wast']:
+        if args.method in ['simvp', 'tau', 'mmvp', 'wast', 'patch','predformer','modpredformer']:
             input_dummy = torch.ones(1, args.pre_seq_length, C, H, W).to(device)
         elif args.method == 'phydnet':
             _tmp_input1 = torch.ones(1, args.pre_seq_length, C, H, W).to(device)
@@ -121,7 +121,7 @@ class BaseExperiment(object):
             _tmp_input = torch.ones(1, args.total_length, Hp, Wp, Cp).to(device)
             _tmp_flag = torch.ones(1, args.aft_seq_length - 1, Hp, Wp, Cp).to(device)
             input_dummy = (_tmp_input, _tmp_flag)
-        elif args.method in ['swinlstm_d', 'swinlstm_b', 'morlstm_b']:
+        elif args.method in ['swinlstm_d', 'swinlstm_b', 'morlstm_b', 'vmrnn_d','vmrnn_b']:
             input_dummy = torch.ones(1, self.args.total_length, H, W, C).to(device)
         elif args.method == 'predrnnv2':
             Hp, Wp = H // args.patch_size, W // args.patch_size

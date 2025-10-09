@@ -555,12 +555,14 @@ class MoDViTSubBlock(nn.Module):
         aux_loss_on: bool = False,         # 是否启用辅助损失
         mlp_ratio=4., drop_path=0.1,
         num_heads=8, qkv_bias=True, attn_drop=0., 
-        proj_drop=0, act_layer=nn.GELU, norm_layer=nn.LayerNorm,
+        proj_drop=0, act_layer=nn.GELU, norm_layer=nn.LayerNorm,layer_i=0,depth=6,
         **kwargs,
     ):
         super().__init__()                 # 调用父类构造
         self.dim = dim                     # 保存 embedding 维度
         self.capacity_factor = capacity_factor  # 保存 capacity 因子（用于计算 top_k）
+        self.layer_i = layer_i
+        self.depth=depth
         self.transformer_block = ViTBlock(dim=dim,num_heads=num_heads,mlp_ratio=mlp_ratio,
                                           qkv_bias=qkv_bias,drop_path=drop_path,attn_drop=attn_drop,
                                           proj_drop=proj_drop,act_layer=act_layer,norm_layer=norm_layer)  
@@ -590,10 +592,15 @@ class MoDViTSubBlock(nn.Module):
         x = x.flatten(2).transpose(1, 2)
         b, s, d = x.shape             # 获取输入形状：b=batch，s=序列长度，d=embedding 维度
         device = x.device             # 设备（cuda/cpu），这里取得但实际代码中并未再次使用 device 变量
-
-        # Top k
-        top_k = int(s * self.capacity_factor)   # 计算要选取的 token 数量 top_k（例如 capacity_factor=0.25 则选 25% 的 token）
-                                                # 注意：如果 capacity_factor 太小可能导致 top_k==0，要确保 top_k >= 1
+        
+        if self.layer_i<2:
+            # Top k
+            top_k = int(s)   # 计算要选取的 token 数量 top_k（例如 capacity_factor=0.25 则选 25% 的 token）
+        elif self.layer_i==self.depth-1:
+            top_k = int(s)
+        else:
+            top_k = int(s)
+    
 
         # Scalar weights for each token
         router_logits = self.router(x)          # 对每个 token 计算路由 logit，形状 [B, S, 1]
