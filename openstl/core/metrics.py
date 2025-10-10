@@ -247,7 +247,7 @@ def metric(pred, true, mean=None, std=None, metrics=['mae', 'mse'],
         for b in range(pred.shape[0]):
             for f in range(pred.shape[1]):
                 ssim += cal_ssim(pred[b, f],
-                                 true[b, f], channel_axis=0,data_range=1.0)
+                                 true[b, f], channel_axis=0, data_range=2)
         eval_res['ssim'] = ssim / (pred.shape[0] * pred.shape[1])
 
     if 'psnr' in metrics:
