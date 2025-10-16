@@ -1,7 +1,8 @@
 import torch
 # from openstl.models import PredFormer_Model
-from openstl.models import PredFormer_FacTS_Model as PredFormer_Model
+# from openstl.models import PredFormer_FacTS_Model as PredFormer_Model
 # from openstl.models import PredFormer_FacST_Model as PredFormer_Model
+from openstl.models.PredFormer_Quadruplet_TSST import PredFormer_Model
 from .base_method import Base_method
 import torch.nn.functional as F
 
@@ -53,7 +54,6 @@ class PredFormer_method(Base_method):
     def training_step(self, batch, batch_idx):
         batch_x, batch_y = batch
         pred_y = self(batch_x)
-        loss = self.criterion(pred_y, batch_y) + \
-            self.hparams.alpha * self.diff_div_reg(pred_y, batch_y)
+        loss = self.criterion(pred_y, batch_y)
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
         return loss

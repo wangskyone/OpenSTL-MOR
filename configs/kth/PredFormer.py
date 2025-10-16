@@ -20,7 +20,7 @@ model_config = {
     'scale_dim': 2,
     # depth
     'depth': 1,
-    'Ndepth': 4
+    'Ndepth': 2 
 
 }
 alpha = 0.1 # tau_loss weight
